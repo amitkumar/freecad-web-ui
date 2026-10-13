@@ -1,0 +1,30 @@
+# Dependencies and build outputs
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+
+# Private models and derived display data
+private/
+local-data/
+exports/
+*.FCStd
+*.FCStd1
+*.FCBak
+*.step
+*.stp
+*.stl
+*.obj
+*.mtl
+*.glb
+*.gltf
+*.sh3d
