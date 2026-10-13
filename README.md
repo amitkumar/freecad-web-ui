@@ -1,65 +1,82 @@
 # FreeCAD Web UI
 
-A local WebGL interface for reviewing and making controlled edits to a FreeCAD model, with FreeCAD remaining the single source of truth.
+A local WebGL interface for a real FreeCAD sample board. Change its length in the browser; FreeCAD recomputes the solid and returns its geometry. FreeCAD remains the single source of truth.
 
-## Status
+## Prototype 01
 
-Planning scaffold. No web viewer or live bridge is implemented yet.
+Implemented:
 
-## Intended workflow
+- Live tessellated geometry from a named FreeCAD `Part::Box`.
+- Browser orbit, zoom, top/isometric views, and automatic framing after length changes.
+- Length editing in inches, converted to millimeters before submission.
+- FreeCAD transactions and shape validation for edits.
+- Session/revision checks to reject stale commands; request IDs prevent duplicate application.
+- One-second refresh to observe changes made directly in FreeCAD.
+- An explicit **Save model** action and saved-state comparison against the FCStd file.
+- Loopback-only serving, per-session authorization, origin/host checks, and a fixed operation allowlist.
 
-```text
-Browser UI <-> local bridge <-> active FreeCAD document
-                   |
-                   +-> generated display geometry and object metadata -> Browser UI
+The sample starts at 14 × 3.5 × 1.5 inches. Length is limited to 1–96 inches. Existing saved sample dimensions are preserved on later launches.
+
+## Run locally
+
+Prerequisites: the FreeCAD desktop application, Node.js/npm for installing Three.js, and a browser with WebGL.
+
+1. In this repository, run:
+
+   ```sh
+   npm ci
+   ```
+
+2. In FreeCAD, choose **File → Open** and open `bridge/StartWebUI.FCMacro`.
+3. Choose **Macro → Execute Macro**. It opens or creates the sample FCStd file and opens an authorized viewer in your default browser.
+4. Enter a length, select **Apply in FreeCAD**, then **Save model** to persist it.
+
+The server runs inside FreeCAD at `http://127.0.0.1:8765/`. Keep FreeCAD running. The authorized viewer link is also stored in ignored `local-data/viewer-url.txt`; treat it as a local credential. A plain link requires an already-authorized browser tab session.
+
+If FreeCAD restarts, execute the macro again and use the newly opened viewer. If port 8765 is already occupied by another application, startup fails rather than selecting an unexpected address. Re-executing the macro replaces its previous bridge session.
+
+To stop the bridge without quitting FreeCAD, run this in FreeCAD's Python console:
+
+```python
+App._web_ui_bridge.stop()
 ```
 
-The browser displays derived geometry and sends structured commands. FreeCAD owns design geometry, parameters, placements, recomputation, undo, and persistence. Browser meshes are disposable display data, never an independent editable design.
+## Single source of truth
 
-## Proposed stack
+```text
+Browser commands → local request queue → FreeCAD document → display mesh → browser
+```
 
-- TypeScript and Three.js for the browser interface and WebGL rendering.
-- A Python integration running inside the user's installed FreeCAD application.
-- A local HTTP/WebSocket transport, with its implementation chosen during the prototype.
-- Generated mesh data and metadata identifying objects, dimensions, units, and model revision.
+All document operations run on FreeCAD's GUI thread. The browser cannot execute arbitrary Python, open arbitrary files, or edit a second model. Camera changes are local viewer preferences. Saving writes `local-data/sample-board.FCStd`.
 
-## First milestone
+The saved indicator covers this sample board's dimensions and placement, not unrelated document metadata. Mesh data is derived and disposable. This prototype is limited to the dedicated sample board; it is not an editor for arbitrary CAD documents.
 
-Use a synthetic rectangular board to prove the complete connection:
+## Tests
 
-1. Open the board in FreeCAD.
-2. Display its geometry and dimensions in the browser.
-3. Change its length through an explicitly allowed browser control.
-4. Apply the change in FreeCAD, recompute, and report errors.
-5. Refresh the browser from the resulting FreeCAD state.
-6. Save in FreeCAD, reopen, and verify the same dimension persists.
+Pure protocol checks (Python 3.9+):
 
-## Planned features
+```sh
+python3 -m unittest discover -s tests -v
+```
 
-- Orbit, pan, zoom, standard views, and saved viewpoints.
-- Object selection, visibility toggles, and authoritative property inspection.
-- Model revision, connection status, and saved/unsaved indicators.
-- Controlled parameter and placement edits with undo support.
-- Apartment walkthrough controls after the review workflow works reliably.
+Opt-in live integration checks, after launching the macro:
 
-General sketch editing and arbitrary face/edge operations are outside the initial scope.
+```sh
+FREECAD_LIVE_TEST=1 python3 -m unittest discover -s tests -v
+```
 
-## Design rules
+Live checks temporarily change the synthetic board, restore its original length, and save it. They cover authorization, origin/host checks, private-file isolation, invalid values, stale commands, duplicate requests, exported mesh dimensions, and persistence in FCStd XML.
 
-- One active document owner; do not write a second process's stale copy over a document open in FreeCAD.
-- Route document operations onto FreeCAD's application thread.
-- Reject stale edit commands and validate allowed object/property/value combinations.
-- Roll back failed edits and show recomputation errors.
-- Distinguish a successful in-memory change from a successful save.
-- Preserve object identity independently of display labels and tessellation indices.
-- Keep units explicit across the bridge.
-- Restrict the bridge to loopback with session authorization and origin checks; do not expose arbitrary Python execution or unrestricted file access.
-- Keep private CAD projects, apartment measurements, credentials, and generated previews out of this public repository.
+For a separate FreeCAD-side check of direct edits, undo/redo, and save/close/reopen, open and execute `tests/FreeCADSmoke.FCMacro` after starting the bridge. It restores the original sample length and writes an ignored `local-data/smoke-report.json` when successful.
 
-See [architecture](docs/architecture.md) for implementation considerations.
+## Current limitations
 
-## Development
+- Single local user and a single synthetic board; no apartment files are included.
+- Polling HTTP transport, not WebSockets or multiuser synchronization.
+- No general sketch, face/edge, constraint, material, or manufacturing editor.
+- Length changes explicitly save only when requested; closing FreeCAD discards unsaved changes according to FreeCAD's normal behavior.
+- On the tested macOS/Qt build, a crash occurred in Qt accessibility while FreeCAD animated a camera fit. The bridge avoids animated startup framing and no longer fits the desktop camera after web edits. This mitigates the observed path; it is not a general Qt crash fix.
 
-There are no installation or launch commands yet. The first implementation should establish and test the FreeCAD bridge before expanding the interface.
+See [architecture](docs/architecture.md) for the broader design.
 
 This is an independent project, not an official FreeCAD product.

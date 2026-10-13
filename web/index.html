@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FreeCAD · Board Studio</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body>
+<header><a class="brand" href="/" aria-label="Board Studio home"><span class="brand-icon">▱</span> Board Studio <span class="prototype">PROTOTYPE 01</span></a><div class="connection"><span id="dot"></span><span id="connection">Connecting to FreeCAD…</span></div></header>
+<main>
+<section class="scene" aria-label="Interactive 3D board viewer">
+<div class="scene-heading"><span class="eyebrow">LIVE MODEL / FREECAD</span><h1>A small change.<br>A real model.</h1><p>Inspect the board. Change its length.<br>FreeCAD does the modeling.</p></div>
+<canvas id="viewport" aria-label="3D sample board. Drag to rotate, scroll to zoom."></canvas>
+<div class="view-tools"><button id="reset" title="Reset camera">↗ Isometric</button><button id="top" title="View from above">▤ Top view</button><button id="fit" title="Fit board in view">⊡ Fit board</button></div>
+<div class="scene-footer"><span>Drag to orbit · Scroll to zoom</span><span id="model-revision">Awaiting model</span></div>
+</section>
+<aside>
+<div class="inspector-title"><span class="eyebrow">OBJECT INSPECTOR</span><span class="pill">TEST ONLY</span></div>
+<h2>Sample board</h2><p class="muted">A solid timber blank, defined in FreeCAD.</p>
+<div class="source"><span class="source-icon">◈</span><div><strong>FreeCAD is the source of truth</strong><p>This view follows the active sample model.</p></div></div>
+<form id="length-form"><label for="length">Length <span>inches</span></label><div class="input-wrap"><input id="length" type="number" min="1" max="96" step="any" value="14" required disabled><span>in</span></div><div class="field-caption"><span>Allowed range: 1–96 in</span><span id="length-mm">— mm</span></div><button class="primary" id="apply" type="submit" disabled>Apply in FreeCAD <span>→</span></button></form>
+<div class="dimensions"><div><span>Width</span><strong id="width">—</strong></div><div><span>Thickness</span><strong id="height">—</strong></div></div>
+<div class="save-row"><div><span id="save-dot" class="save-dot"></span><strong id="saved">Awaiting model</strong><p>Sample board geometry</p></div><button id="save" disabled>Save model</button></div>
+<p id="message" role="status" aria-live="polite">Connecting to your local FreeCAD session.</p>
+<details><summary>How the connection works</summary><p>Your changes are sent to FreeCAD, recomputed, and returned as display geometry. The browser keeps no separate editable design. Saving writes the sample FCStd file on this computer.</p><p id="version"></p></details>
+</aside>
+</main><footer><span>LOCAL WORKSPACE <span class="footer-divider">/</span> No cloud connection</span><span id="file">sample-board.FCStd</span></footer>
+</body></html>

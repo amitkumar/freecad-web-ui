@@ -1,0 +1,66 @@
+"""Run inside FreeCAD after StartWebUI.FCMacro, on the synthetic sample only."""
+import FreeCAD as App
+import FreeCADGui as Gui
+import json
+import uuid
+from pathlib import Path
+
+bridge = App._web_ui_bridge
+bridge.timer.stop()
+report = {}
+try:
+    before = bridge.snapshot()
+    doc = bridge.document
+    board = doc.getObject('SampleBoard')
+    original = board.Length.Value
+    changed = original + 25.4 if original < 2000 else original - 25.4
+    doc.openTransaction('Smoke test: direct FreeCAD edit')
+    board.Length = changed
+    doc.recompute()
+    doc.commitTransaction()
+    after = bridge.snapshot()
+    assert after['revision'] > before['revision']
+    assert abs(after['dimensionsMm']['length'] - changed) < 1e-6
+    report['direct_freecad_edit_observed'] = True
+    status, _ = bridge.execute(dict(operation='set_length', session=before['session'], revision=before['revision'], requestId=uuid.uuid4().hex, lengthMm=original))
+    assert status == 409
+    report['stale_browser_edit_rejected'] = True
+    doc.undo()
+    doc.recompute()
+    assert abs(board.Length.Value - original) < 1e-6
+    assert abs(bridge.snapshot()['dimensionsMm']['length'] - original) < 1e-6
+    doc.redo()
+    doc.recompute()
+    assert abs(bridge.snapshot()['dimensionsMm']['length'] - changed) < 1e-6
+    doc.undo()
+    doc.recompute()
+    report['undo_redo_observed'] = True
+    doc.save()
+    filename = doc.FileName
+    name = doc.Name
+    App.closeDocument(name)
+    reopened = App.openDocument(filename)
+    assert abs(reopened.getObject('SampleBoard').Length.Value - original) < 1e-6
+    assert reopened.getObject('SampleBoard').Shape.isValid()
+    bridge.document = reopened
+    bridge.document.UndoMode = 1
+    bridge.session = uuid.uuid4().hex
+    bridge.fingerprint = None
+    bridge.file_stamp = None
+    report['save_close_reopen_preserved_length'] = True
+    report['final_length_mm'] = original
+    assert bridge.snapshot()['saved']
+    report['saved_state_matches_file'] = True
+    App.setActiveDocument(reopened.Name)
+    view = Gui.activeDocument().activeView()
+    animation = view.isAnimationEnabled()
+    view.setAnimationEnabled(False)
+    try:
+        view.viewAxonometric()
+        view.fitAll()
+    finally:
+        view.setAnimationEnabled(animation)
+    Path(filename).with_name('smoke-report.json').write_text(json.dumps(report, indent=2))
+    print('FreeCAD smoke test passed: direct edit, stale rejection, undo/redo, save/close/reopen.')
+finally:
+    bridge.timer.start(40)

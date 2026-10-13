@@ -1,0 +1,9 @@
+{
+  "name": "freecad-web-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local WebGL review and controlled editing with FreeCAD as the source of truth",
+  "scripts": {"test": "python3 -m unittest discover -s tests -v"},
+  "dependencies": {"three": "^0.184.0"}
+}

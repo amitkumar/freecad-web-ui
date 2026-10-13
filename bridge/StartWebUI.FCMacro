@@ -1,0 +1,8 @@
+# Run with Macro > Macros > Execute in FreeCAD.
+from pathlib import Path
+import importlib.util
+root = Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location('freecad_web_bridge', root / 'freecad_web_bridge.py')
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+module.start()
