@@ -1,8 +1,20 @@
 import * as THREE from '/vendor/three.module.js';
 
 const $ = id => document.getElementById(id);
-const token = new URLSearchParams(location.hash.slice(1)).get('token') || sessionStorage.getItem('freecad-session-token');
-if (token) sessionStorage.setItem('freecad-session-token', token);
+// Share authorization between tabs on this local origin. The FreeCAD process
+// still validates its random per-session token on every API request.
+const tokenKey = 'freecad-session-token';
+function readStoredToken() {
+  try { return localStorage.getItem(tokenKey) || sessionStorage.getItem(tokenKey); }
+  catch { return null; }
+}
+let token = new URLSearchParams(location.hash.slice(1)).get('token') || readStoredToken();
+function rememberToken(value) {
+  if (!value) return;
+  try { localStorage.setItem(tokenKey, value); } catch { /* storage may be disabled */ }
+  try { sessionStorage.setItem(tokenKey, value); } catch { /* storage may be disabled */ }
+}
+rememberToken(token);
 // Remove the authorization token from the visible URL and browser history entry.
 if (location.hash) history.replaceState(null, '', location.pathname);
 let state = null, busy = false, editing = false, available = false;
@@ -10,7 +22,7 @@ const message = (text, error = false) => { $('message').textContent = text; $('m
 function connection(ok) {
   available = ok;
   $('dot').classList.toggle('connected', ok);
-  $('connection').textContent = ok ? 'Connected to FreeCAD' : 'FreeCAD disconnected';
+  $('connection').textContent = ok ? 'Connected to FreeCAD' : token ? 'FreeCAD disconnected' : 'Connect from FreeCAD';
   $('length').disabled = !ok || busy;
   $('apply').disabled = !ok || busy;
   $('save').disabled = !ok || busy || !state || state.saved;
@@ -18,7 +30,11 @@ function connection(ok) {
 async function api(path, body) {
   const response = await fetch(path, {method: body ? 'POST' : 'GET', headers: {'Authorization': `Bearer ${token || ''}`, ...(body ? {'Content-Type': 'application/json'} : {})}, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(12000)});
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
+  if (!response.ok) {
+    const error = new Error(response.status === 401 ? 'This FreeCAD session needs authorization. Open the viewer using StartWebUI.FCMacro in FreeCAD.' : result.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
   return result;
 }
 
@@ -99,10 +115,19 @@ if (renderer) {
   cameraUpdate(); renderer.setAnimationLoop(()=> renderer.render(scene,camera));
 }
 async function poll() {
-  if (!token) {connection(false);message('Run StartWebUI.FCMacro in FreeCAD and open its authorized viewer link.',true);return;}
+  const sharedToken = readStoredToken();
+  if (sharedToken && sharedToken !== token) {
+    token = sharedToken; state = null; editing = false; editBase = null;
+  }
+  if (!token) {
+    connection(false);
+    message('Open the viewer from FreeCAD once to connect this browser. Other tabs will then connect automatically.', true);
+    setTimeout(poll, 1000);
+    return;
+  }
   if (!busy) {
     try {const wasConnected=available;const next=await api('/api/snapshot');if(!busy && (!state || next.session!==state.session || next.revision>=state.revision)){renderState(next);if(!wasConnected)message('Live geometry received from FreeCAD. Change the length to try the connection.');}}
-    catch(error){connection(false);message(error.message,true);}
+    catch(error){connection(false);if(error.status===401)$('connection').textContent='Authorization needed';message(error.message,true);}
   }
   setTimeout(poll,1000);
 }

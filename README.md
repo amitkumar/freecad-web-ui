@@ -31,7 +31,7 @@ Prerequisites: the FreeCAD desktop application, Node.js/npm for installing Three
 3. Choose **Macro → Execute Macro**. It opens or creates the sample FCStd file and opens an authorized viewer in your default browser.
 4. Enter a length, select **Apply in FreeCAD**, then **Save model** to persist it.
 
-The server runs inside FreeCAD at `http://127.0.0.1:8765/`. Keep FreeCAD running. The authorized viewer link is also stored in ignored `local-data/viewer-url.txt`; treat it as a local credential. A plain link requires an already-authorized browser tab session.
+The server runs inside FreeCAD at `http://127.0.0.1:8765/`. Keep FreeCAD running. The authorized viewer link is also stored in ignored `local-data/viewer-url.txt`; treat it as a local credential. After opening the authorized link once, plain viewer links work in other tabs of the same browser profile. Authorization is stored only for this local origin and is validated by FreeCAD on every request. A FreeCAD restart still requires opening the new authorized link.
 
 If FreeCAD restarts, execute the macro again and use the newly opened viewer. If port 8765 is already occupied by another application, startup fails rather than selecting an unexpected address. Re-executing the macro replaces its previous bridge session.
 

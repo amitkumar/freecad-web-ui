@@ -19,4 +19,4 @@ The HTTP worker threads enqueue operations. A retained Qt timer processes them o
 
 Revision changes are detected by polling a fingerprint of board dimensions and placement. The saved geometry fingerprint is read from the actual FCStd archive when the file changes. File contents, not browser state, determine persistence status.
 
-An interrupted connection disables edits. A new session is authorized by rerunning the macro and reopening its link. The current prototype is local-only and intentionally has no deployment configuration.
+An interrupted connection disables edits. A new session is authorized by rerunning the macro and reopening its link. The browser retains the token in localStorage for this exact origin, with sessionStorage as a fallback. Tabs reread shared authorization while polling so a tab waiting for authorization can recover once another tab opens the authorized link. A stale credential produces an authorization-needed message rather than implying FreeCAD stopped. The current prototype is local-only and intentionally has no deployment configuration.
