@@ -113,8 +113,11 @@ def launch(plan):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--dry-run', action='store_true', help='Print the launch plan and blockers without creating files or starting FreeCAD')
+    parser.add_argument('--smoke-test', action='store_true', help='Run the synthetic-board undo/save/reopen test after startup')
     args = parser.parse_args()
     plan = make_plan(Path(__file__).parent)
+    if args.smoke_test:
+        plan['environment']['FREECAD_WEB_UI_SMOKE_TEST'] = '1'
     try:
         if args.dry_run:
             print(json.dumps(dict(plan, blockers=blockers(plan)), indent=2))

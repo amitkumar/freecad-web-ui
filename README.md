@@ -55,7 +55,15 @@ Preview the launch plan without creating runtime files or starting FreeCAD:
 python3 launch.py --dry-run
 ```
 
-Launcher safeguards are tested with a mocked app executable. The complete isolated GUI launch and native undo/reopen smoke test still require a coordinated test session. Manual `StartWebUI.FCMacro` launch remains supported, but cannot change Qt's already-initialized startup environment.
+Launcher safeguards have unit tests. On October 14, 2026, an approved temporary-copy test also verified isolated startup on FreeCAD 1.1.4 with `QT_ACCESSIBILITY=0`, direct edits, stale rejection, undo/redo, save/close/reopen, browser edit/save, and graceful child-process exit. See `docs/validation.md` for the test boundary.
+
+To request the native synthetic-board smoke test during an ordinary isolated launch:
+
+```sh
+python3 launch.py --smoke-test
+```
+
+The default running-process and occupied-port checks still apply. Test startup writes ignored `local-data/launch-report.json` and `local-data/smoke-report.json`; no session credentials are included in these reports. Manual `StartWebUI.FCMacro` launch remains supported, but cannot change Qt's already-initialized startup environment.
 
 ## Single source of truth
 
