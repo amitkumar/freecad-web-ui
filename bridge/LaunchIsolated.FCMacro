@@ -1,0 +1,50 @@
+"""Delayed startup for the dedicated synthetic-board session."""
+from pathlib import Path
+import importlib.util
+import os
+import json
+import runpy
+import time
+import FreeCAD as App
+from PySide import QtCore
+
+# Hold the inherited launch lock for the lifetime of this FreeCAD process.
+# Manual execution has no inherited lock and uses the bridge's port checks.
+launch_fd = os.environ.pop('FREECAD_WEB_UI_LAUNCH_FD', None)
+if launch_fd:
+    App._web_ui_launch_lock = os.fdopen(int(launch_fd), 'a')
+
+bridge_directory = Path(__file__).resolve().parent
+
+def boot_board_studio():
+    try:
+        if os.environ.get('QT_ACCESSIBILITY') != '0':
+            raise RuntimeError('Use Open Board Studio.command to apply the isolated macOS startup environment.')
+        spec = importlib.util.spec_from_file_location('freecad_web_bridge', bridge_directory/'freecad_web_bridge.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        App._web_ui_bridge_module = module
+        bridge = module.start()
+        report = {
+            'started': True,
+            'pid': os.getpid(),
+            'qt_accessibility': os.environ.get('QT_ACCESSIBILITY'),
+            'recovery_directory': os.environ.get('FREECAD_USER_TEMP'),
+            'document_file': bridge.document.FileName,
+            'freecad_version': App.Version()[:3],
+            'smoke_test_requested': os.environ.get('FREECAD_WEB_UI_SMOKE_TEST') == '1',
+            'timestamp': time.time(),
+        }
+        if report['smoke_test_requested']:
+            runpy.run_path(str(bridge_directory.parent/'tests/FreeCADSmoke.FCMacro'))
+            report['smoke_test_passed'] = True
+        (bridge_directory.parent/'local-data/launch-report.json').write_text(json.dumps(report, indent=2))
+    except Exception as exc:
+        data_directory = bridge_directory.parent/'local-data'
+        data_directory.mkdir(exist_ok=True)
+        (data_directory/'launch-report.json').write_text(json.dumps({'started': False, 'error': str(exc), 'pid': os.getpid(), 'timestamp': time.time()}, indent=2))
+        App.Console.PrintError('Board Studio startup failed: ' + str(exc) + '\n')
+
+# Keep the callback retained even if the macro runner releases its namespace.
+App._web_ui_boot_callback = boot_board_studio
+QtCore.QTimer.singleShot(750, App._web_ui_boot_callback)
