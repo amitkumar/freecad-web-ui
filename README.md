@@ -41,6 +41,22 @@ To stop the bridge without quitting FreeCAD, run this in FreeCAD's Python consol
 App._web_ui_bridge.stop()
 ```
 
+## Isolated macOS launcher (additional launch path)
+
+After installing dependencies, double-click **Open Board Studio.command** in this repository. It starts the dedicated sample-board session with `QT_ACCESSIBILITY=0`, separate settings under `local-data/runtime/user.cfg`, and recovery storage under `local-data/runtime/recovery`. Initial settings disable navigation animations. Existing settings and recovery data are preserved.
+
+The launcher refuses to start if any `freecad` process is already running or port 8765 is occupied. It never terminates another process. Arrange a session handoff first, then save and close FreeCAD yourself before starting it. Do not run it during another design session's live operation.
+
+The accessibility workaround applies only to this launched process and can reduce screen-reader and native UI-automation access. Browser interaction uses the bridge and does not depend on native accessibility. This is a mitigation for the observed Qt/macOS crash, not a product fix.
+
+Preview the launch plan without creating runtime files or starting FreeCAD:
+
+```sh
+python3 launch.py --dry-run
+```
+
+Launcher safeguards are tested with a mocked app executable. The complete isolated GUI launch and native undo/reopen smoke test still require a coordinated test session. Manual `StartWebUI.FCMacro` launch remains supported, but cannot change Qt's already-initialized startup environment.
+
 ## Single source of truth
 
 ```text

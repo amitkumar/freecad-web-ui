@@ -14,3 +14,12 @@ Verified on macOS with FreeCAD 1.1.4 and Chrome, October 13, 2026:
 A macOS crash occurred during testing. The stack showed Qt accessibility object destruction while FreeCAD ran an animated camera-fit event loop. Startup now frames without animation; web edits no longer fit the desktop camera; a reentrancy guard protects the main-thread request queue. Subsequent HTTP integration and browser edit/save checks passed. These changes mitigate the observed code path, not all potential Qt/macOS crashes.
 
 `tests/FreeCADSmoke.FCMacro` is provided for direct-edit observation, undo/redo, and an explicit save/close/reopen cycle. It was not executed successfully during this session because native file-dialog automation became unreliable. Those additional checks remain unverified; they are not included in the passing test count.
+
+
+## Isolated launcher checks — October 14, 2026
+
+- Six launcher tests passed, covering dedicated paths/environment, refusal while FreeCAD is running, refusal on an occupied port, preservation of config/recovery files, initial animation settings, and failure when process detection is unavailable. Execution of FreeCAD was mocked.
+- Six existing protocol tests passed; the two opt-in live tests were skipped.
+- Shell syntax and Python/macro syntax checks passed.
+- A real `--dry-run` detected an existing FreeCAD process and reported the blocker without starting/stopping a process or creating runtime files.
+- The complete isolated GUI launch and FreeCAD-side smoke macro remain unverified pending a coordinated session handoff. The earlier stable prototype commit remains independently usable.

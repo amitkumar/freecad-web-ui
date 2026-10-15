@@ -1,0 +1,30 @@
+"""Delayed startup for the dedicated synthetic-board session."""
+from pathlib import Path
+import importlib.util
+import os
+import FreeCAD as App
+from PySide import QtCore
+
+# Hold the inherited launch lock for the lifetime of this FreeCAD process.
+# Manual execution has no inherited lock and uses the bridge's port checks.
+launch_fd = os.environ.pop('FREECAD_WEB_UI_LAUNCH_FD', None)
+if launch_fd:
+    App._web_ui_launch_lock = os.fdopen(int(launch_fd), 'a')
+
+bridge_directory = Path(__file__).resolve().parent
+
+def boot_board_studio():
+    try:
+        if os.environ.get('QT_ACCESSIBILITY') != '0':
+            raise RuntimeError('Use Open Board Studio.command to apply the isolated macOS startup environment.')
+        spec = importlib.util.spec_from_file_location('freecad_web_bridge', bridge_directory/'freecad_web_bridge.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        App._web_ui_bridge_module = module
+        module.start()
+    except Exception as exc:
+        App.Console.PrintError('Board Studio startup failed: ' + str(exc) + '\n')
+
+# Keep the callback retained even if the macro runner releases its namespace.
+App._web_ui_boot_callback = boot_board_studio
+QtCore.QTimer.singleShot(750, App._web_ui_boot_callback)
